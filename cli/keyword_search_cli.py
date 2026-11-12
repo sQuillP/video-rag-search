@@ -1,12 +1,16 @@
 import argparse
 from lib import keyword_search
 
-# Last left off: ch2 L1
+
+# https://www.boot.dev/lessons/b05a1f24-785d-474f-b935-a5fea8b564d3
+
 def build_command():
     indices = keyword_search.InvertedIndex()
-    indices.build()
-    indices.save()
-    print(f'First document for token "merida" = {indices.index.get('merida')}')
+    loaded = indices.load()
+    if loaded == False:
+        print('Unable to load indices... check the logs. Shutting down program...')
+        exit(1)
+    return indices
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -22,11 +26,14 @@ def main() -> None:
     args = parser.parse_args()
     print(args.command)
 
+    indices = build_command()
+
     match args.command:
         case "search":
             # print the search query here
-            search_results = keyword_search.search_movies(args.query)
-            print(search_results)
+            search_results = keyword_search.search_movies(args.query, indices, 5)
+            for entry in search_results:
+                print(entry['id'], '->', entry['content'][:20])
         case 'build':
             print("building")
             build_command()

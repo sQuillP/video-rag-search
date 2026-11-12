@@ -1,8 +1,7 @@
 from pathlib import Path
 from lib import search_utils
-import re
 from nltk import PorterStemmer
-from collections import defaultdict
+from collections import defaultdict, Counter
 import pickle
 
 stemmer = PorterStemmer()
@@ -20,6 +19,7 @@ class InvertedIndex:
     def __init__(self):
         self.index = defaultdict(set)
         self.docmap = defaultdict(str)
+        self.term_frequencies = defaultdict(Counter)
 
     def __add_document(self, doc_id, text):
         print('adding document ', doc_id)
@@ -27,8 +27,9 @@ class InvertedIndex:
         self.docmap[doc_id] = text
         for token in tokenized:
             self.index[token].add(doc_id)
+            self.term_frequencies[doc_id][doc_id]+= 1
 
-    def get_documents(self, term):
+    def get_documents(self, term: str):
         doc_ids = list(self.index[term])
         doc_ids.sort()
         return doc_ids
@@ -47,10 +48,24 @@ class InvertedIndex:
                 pickle.dump(self.index,indexfile)
             with open(docmap_file_directory, 'wb') as docmap:
                 pickle.dump(self.docmap, docmap)
+            return True
         except Exception as e:
             print('PROBLEM WITH SAVING::: ',str(e))
-            exit(1)
-        
+            return False
+
+    def load(self):
+        try:
+            with open(index_file_directory, 'rb') as index_file:
+                self.index = pickle.load(index_file)
+            with open(docmap_file_directory, 'rb') as docmap_file:
+                self.docmap = pickle.load(docmap_file)
+            return True
+        except FileNotFoundError as fnfe:
+            print('Error loading cached files', str(fnfe))
+            return False
+        except BaseException as be:
+            print('Base exception occurred: ', str(be))
+            return False
 
 # Left off at l7: Tokenization
 
@@ -58,20 +73,36 @@ class InvertedIndex:
 
 
 
-def search_movies(title: str):
+def search_movies(title: str, inverted:InvertedIndex, count = 5):
+
     title = search_utils.clean(title)
-    title_fragments = re.split(r'\s+', title)
-    json_data = search_utils.read_json(movies_directory)
-    stopwords = set(search_utils.load_stopwords())
-    movies = json_data['movies']
-    results_list = []
+    fragments = search_utils.tokenize_text(title)
+    counter = 0
+    results = []
+    for token in fragments:
+        for word in inverted.index.keys():
+            if token == word:
+                for id in inverted.get_documents(word):
+                    if counter >= count:
+                        return results
+                    row = {'content': inverted.docmap[id], 'id': id}
+                    results.append(row)
+                    counter += 1
+    return results
 
-    for movie in movies:
-        cleaned_title = search_utils.clean(movie['title'])
-        for fragment in title_fragments:
-            if fragment not in stopwords and stemmer.stem(fragment) in stemmer.stem(cleaned_title):
-                results_list.append({'title': movie['title'], 'id': movie['id']})
+    # title = search_utils.clean(title)
+    # title_fragments = re.split(r'\s+', title)
+    # json_data = search_utils.read_json(movies_directory)
+    # stopwords = set(search_utils.load_stopwords())
+    # movies = json_data['movies']
+    # results_list = []
 
-    results_list.sort(key= lambda x: x['id'])
-    shortened = results_list[:5]
-    return shortened
+    # for movie in movies:
+    #     cleaned_title = search_utils.clean(movie['title'])
+    #     for fragment in title_fragments:
+    #         if fragment not in stopwords and stemmer.stem(fragment) in stemmer.stem(cleaned_title):
+    #             results_list.append({'title': movie['title'], 'id': movie['id']})
+
+    # results_list.sort(key= lambda x: x['id'])
+    # shortened = results_list[:5]
+    # return shortened
