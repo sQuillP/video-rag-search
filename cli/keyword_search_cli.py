@@ -1,35 +1,8 @@
 import argparse
-from lib import keyword_search
+import math
+from lib import keyword_search, commands
 
 
-
-def load_cached():
-    indices = keyword_search.InvertedIndex()
-    loaded = indices.load()
-    if loaded == False:
-        print('Unable to load indices... check the logs. Shutting down program...')
-        exit(1)
-    return indices
-
-
-def build():
-    indices = keyword_search.InvertedIndex()
-    valid = indices.build()
-    if valid:
-        print('successfully built the indices')
-    else:
-        print('something went wrong building the indices')
-    success = indices.save()
-    if success:
-        print('successfully saved the indices')
-    else:
-        print('unable to save the indices. Something went wrong...')
-
-
-def tf(index:keyword_search.InvertedIndex, doc_id:int, term:str):
-    token = index.tokenize_term(term)
-    frequency = index.get_tf(doc_id, term)
-    return frequency
 
 
 
@@ -48,22 +21,33 @@ def main() -> None:
     tf_parser.add_argument('doc_id', type=int, help='Document id')
     tf_parser.add_argument('term', type=str, help='team to get the count for')
 
+    idf_parser = subparsers.add_parser('idf', help='use the idf command')
+    idf_parser.add_argument('term', type=str, help='term for idf')
+
+    tfidf_parser = subparsers.add_parser('tfidf', help='Calculate the tfidf score')
+    tfidf_parser.add_argument('doc_id', type=int, help='document id for tfidf to find')
+    tfidf_parser.add_argument('term', type=str, help='tfidf term')
     args = parser.parse_args()
 
     match args.command:
         case "search":
-            indices = load_cached()
             # print the search query here
-            search_results = keyword_search.search_movies(args.query, indices, 5)
+            search_results = keyword_search.search_movies(args.query,commands.index, 5)
             for entry in search_results:
                 print(entry['id'], '->', entry['content'][:20])
         case 'build':
             print("building")
-            build()
+            commands.build()
         case 'tf':
-            indices = load_cached()
-            result = tf(indices, args.doc_id, args.term)
+            result = commands.tf(args.doc_id, args.term)
             print(result)
+        case 'idf':
+            term = args.term
+            result = commands.idf(term)
+            print(f"Inverse document frequency of '{args.term}': {result:.2f}")
+        case 'tfidf':
+            tfidf_score = commands.tfidf(args.doc_id, args.term)
+            print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tfidf_score:.2f}")
         case _:
             parser.print_help()
 
