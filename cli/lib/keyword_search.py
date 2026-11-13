@@ -9,7 +9,7 @@ CURRENT_DIRECTORY = Path(__file__).resolve().parent
 movies_directory = f"{CURRENT_DIRECTORY}/../../data/movies.json"
 index_file_directory = f'{CURRENT_DIRECTORY}/../../cache/index.pkl'
 docmap_file_directory = f'{CURRENT_DIRECTORY}/../../cache/docmap.pkl'
-
+frequency_file_directory = f'{CURRENT_DIRECTORY}/../../cache/frequencies.pkl'
 
 
 
@@ -27,7 +27,7 @@ class InvertedIndex:
         self.docmap[doc_id] = text
         for token in tokenized:
             self.index[token].add(doc_id)
-            self.term_frequencies[doc_id][doc_id]+= 1
+            self.term_frequencies[doc_id][token]+= 1
 
     def get_documents(self, term: str):
         doc_ids = list(self.index[term])
@@ -35,19 +35,43 @@ class InvertedIndex:
         return doc_ids
 
     def build(self):
-        movie_json = search_utils.read_json(movies_directory)
-        movie_list = movie_json['movies']
-        for movie in movie_list:
-            content = f'{movie['title']} {movie['description']}'
-            movie_id = movie['id']
-            self.__add_document(movie_id,content)
+        try:
+            movie_json = search_utils.read_json(movies_directory)
+            movie_list = movie_json['movies']
+            for movie in movie_list:
+                content = f'{movie['title']} {movie['description']}'
+                movie_id = movie['id']
+                self.__add_document(movie_id,content)
+            return True
+        except BaseException as ex:
+            print('unable to build...', str(ex))
+            return False
+
+    def get_tf(self, doc_id, term):
+        if doc_id not in self.term_frequencies or term not in self.term_frequencies[doc_id]:
+            print("not in here")
+            return 0
+        frequency = self.term_frequencies[doc_id][term]
+        return frequency
+
+    def tokenize_term(self, term:str):
+        tokenized = search_utils.tokenize_text(term)
+        if len(tokenized) != 1:
+            raise ValueError('Must provide exactly one word to be tokenized')
+        return tokenized[0]
+
 
     def save(self):
         try:
+            print('writing index file')
             with open(index_file_directory, 'wb') as indexfile:
                 pickle.dump(self.index,indexfile)
+            print('writing document map')
             with open(docmap_file_directory, 'wb') as docmap:
                 pickle.dump(self.docmap, docmap)
+            print('writing frequency file')
+            with open(frequency_file_directory, 'wb') as freq_file:
+                pickle.dump(self.term_frequencies, freq_file)
             return True
         except Exception as e:
             print('PROBLEM WITH SAVING::: ',str(e))
@@ -59,6 +83,8 @@ class InvertedIndex:
                 self.index = pickle.load(index_file)
             with open(docmap_file_directory, 'rb') as docmap_file:
                 self.docmap = pickle.load(docmap_file)
+            with open(frequency_file_directory, 'rb') as frequency_file:
+                self.term_frequencies = pickle.load(frequency_file)
             return True
         except FileNotFoundError as fnfe:
             print('Error loading cached files', str(fnfe))
