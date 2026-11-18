@@ -6,6 +6,8 @@ index.load()
 
 
 def build():
+    # Must do this before creating new cache. Dump the old
+    index.initialize()
     valid = index.build()
     if valid:
         print('successfully built the index')
@@ -37,4 +39,11 @@ def tfidf(doc_id:int, term:str):
     tfidf_score = tf_score * idf_score
 
     return tfidf_score
-    
+
+def bm25idf(term:str):
+    return index.get_bm25_idf(term=term)
+
+
+def bm25tf(doc_id:int, term:str, k1:float, b:float):
+    return index.get_bm25_tf(doc_id=doc_id, term=term, k1=k1, b=b)
+
