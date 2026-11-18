@@ -26,7 +26,7 @@ def tokenize_text(sentence:str):
     tokens = []
     for word in sentence_frags:
         word = clean(word)
-        if word in stopwords:
+        if not word or word in stopwords:
             continue
 
         stemmed_word = stemmer.stem(word)

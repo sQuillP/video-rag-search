@@ -47,3 +47,7 @@ def bm25idf(term:str):
 def bm25tf(doc_id:int, term:str, k1:float, b:float):
     return index.get_bm25_tf(doc_id=doc_id, term=term, k1=k1, b=b)
 
+
+
+def bm25_search(query:str):
+    return index.bm25_search(query, 5)

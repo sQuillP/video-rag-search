@@ -48,6 +48,12 @@ def main() -> None:
     )
 
 
+    bm25search_parser = subparsers.add_parser(
+        "bm25search", help="Search movies using full BM25 scoring"
+    )
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+
+
     args = parser.parse_args()
 
 
@@ -77,6 +83,9 @@ def main() -> None:
         case 'bm25tf':
             result = commands.bm25tf(doc_id=args.doc_id, term=args.term, k1=args.k1, b=args.b)
             print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {result:.2f}")
+        case 'bm25search':
+            result = commands.bm25_search(args.query)
+            print(result)
         case _:
             parser.print_help()
 

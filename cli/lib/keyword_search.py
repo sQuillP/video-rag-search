@@ -5,6 +5,7 @@ from collections import defaultdict, Counter
 import pickle
 import math
 from .constants import Constants
+from functools import cache
 
 stemmer = PorterStemmer()
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
@@ -53,7 +54,7 @@ class InvertedIndex:
 
     def get_tf(self, doc_id, term):
         if doc_id not in self.term_frequencies or term not in self.term_frequencies[doc_id]:
-            print("not in here")
+            # print("not in here")
             return 0
         frequency = self.term_frequencies[doc_id][term]
         return frequency
@@ -80,6 +81,8 @@ class InvertedIndex:
         bm25_sat = (tf * (k1 + 1)) / (tf + k1 * length_norm)
         return bm25_sat
 
+# https://www.boot.dev/lessons/0d9ee0ea-3d8b-4156-b21e-e7fedda0e2c7
+    @cache
     def __get_avg_doc_length(self) -> float:
         doc_ids = self.doc_lengths.keys()
         N = len(doc_ids)
@@ -90,7 +93,7 @@ class InvertedIndex:
             current_sum += self.doc_lengths[key]
         average = (current_sum) / (N)
 
-        print(f'N={N}, current_sum={current_sum}')
+        # print(f'N={N}, current_sum={current_sum}')
         return average
 
     def initialize(self):
@@ -104,7 +107,27 @@ class InvertedIndex:
         tf = self.get_bm25_tf(doc_id, term)
         idf = self.get_bm25_idf(term)
 
-        score = tf + idf
+        score = tf * idf
+
+        return score
+
+
+    def bm25_search(self, query: str, limit: int = 5):
+        query_tokens = search_utils.tokenize_text(query)
+        scores = {}
+        
+        for doc_id in self.docmap:
+            doc_sum = 0.0
+            for token in query_tokens:
+                doc_sum += self.bm25(doc_id, token)
+            scores[doc_id] = doc_sum
+
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return sorted_scores[:limit]
+        
+
+
+
 
 
     
